@@ -25,6 +25,7 @@ repositories {
     mavenCentral()
 }
 
+
 java {
     group = 'com.cinema.app'
     sourceCompatibility = '21'
