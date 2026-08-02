@@ -1,0 +1,404 @@
+openapi: 3.0.3
+info:
+  title: Cinema Reservation API - Personne B (Auth & Reservations)
+  description: |
+    Endpoints d'authentification et de gestion des réservations pour l'application 
+    de réservation de cinéma. Projet HEI Ivandry - déploiement POJA/AWS Lambda.
+  version: 1.0.0
+  contact:
+    name: Christian Ravelojaona
+    email: christianravelojaona186@gmail.com
+
+servers:
+  - url: http://localhost:8080
+    description: Environnement local
+  - url: https://api.cinema.example.com
+    description: Production (AWS Lambda via POJA)
+
+tags:
+  - name: Auth
+    description: Inscription et connexion des utilisateurs
+  - name: Reservations
+    description: Gestion des réservations de sièges
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Inscrire un nouvel utilisateur
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Utilisateur créé avec succès
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Données invalides (validation échouée)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email déjà utilisé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Se connecter et obtenir un token JWT
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Email ou mot de passe incorrect
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reservations:
+    get:
+      tags: [Reservations]
+      summary: Lister toutes les réservations
+      description: |
+        - **CLIENT** : 403 Forbidden
+        - **EMPLOYEE** : 200 OK
+        - **MANAGER** : 200 OK
+      operationId: getAllReservations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Liste des réservations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Accès refusé (rôle CLIENT)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags: [Reservations]
+      summary: Créer une réservation
+      operationId: createReservation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationRequest'
+      responses:
+        '201':
+          description: Réservation créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400':
+          description: Données invalides
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /reservations/{id}:
+    get:
+      tags: [Reservations]
+      summary: Récupérer une réservation par son id
+      description: |
+        - **CLIENT propriétaire** de la réservation : 200 OK
+        - **CLIENT** non-propriétaire : 403 Forbidden
+        - **EMPLOYEE** : 200 OK
+        - **MANAGER** : 200 OK
+      operationId: getReservationById
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReservationId'
+      responses:
+        '200':
+          description: Réservation trouvée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Accès refusé (CLIENT non-propriétaire)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Réservation introuvable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags: [Reservations]
+      summary: Modifier une réservation
+      description: |
+        - **CLIENT** : 403 Forbidden
+        - **EMPLOYEE** : 200 OK
+        - **MANAGER** : 200 OK
+      operationId: updateReservation
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReservationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationRequest'
+      responses:
+        '200':
+          description: Réservation mise à jour
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '401':
+          description: Non authentifié
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Accès refusé (rôle CLIENT)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Réservation introuvable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT obtenu via /auth/login ou /auth/register
+
+  parameters:
+    ReservationId:
+      name: id
+      in: path
+      required: true
+      description: Identifiant UUID de la réservation
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [firstName, lastName, birthdate, email, password, role]
+      properties:
+        firstName:
+          type: string
+          example: Christian
+        lastName:
+          type: string
+          example: Ravelojaona
+        birthdate:
+          type: string
+          format: date
+          example: "2000-01-01"
+        email:
+          type: string
+          format: email
+          example: christian@test.mg
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: password123
+        phone:
+          type: string
+          example: "0340000001"
+        role:
+          $ref: '#/components/schemas/UserRole'
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: christian@test.mg
+        password:
+          type: string
+          format: password
+          example: password123
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiJ9.eyJzdWIi...
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/UserRole'
+
+    ReservationRequest:
+      type: object
+      required: [firstName, lastName, birthdate, email, password, role, projectionId, seatIds]
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        birthdate:
+          type: string
+          format: date
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        phone:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        projectionId:
+          type: string
+          format: uuid
+        seatIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        birthdate:
+          type: string
+          format: date
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        projection:
+          $ref: '#/components/schemas/ProjectionSummary'
+        seats:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeatSummary'
+        userId:
+          type: string
+          format: uuid
+
+    ProjectionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        datetime:
+          type: string
+          format: date-time
+        seatPrice:
+          type: number
+          format: decimal
+
+    SeatSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        number:
+          type: string
+
+    UserRole:
+      type: string
+      enum: [CLIENT, EMPLOYEE, MANAGER]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Reservation not found: 3fa85f64-5717-4562-b3fc-2c963f66afa6"
