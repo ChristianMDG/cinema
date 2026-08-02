@@ -2,10 +2,4 @@ package com.cinema.app.cinema.dto;
 
 import java.util.UUID;
 
-public record AuthResponse(
-        String token,
-        UUID userId,
-        String email,
-        String role
-) {
-}
+public record AuthResponse(String token, UUID userId, String email, String role) {}
